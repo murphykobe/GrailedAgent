@@ -1,0 +1,13 @@
+# Strands Agents SDK
+strands-agents>=0.1.0
+strands-agents-tools>=0.1.0
+
+# Model Context Protocol for browser automation
+mcp
+
+# Environment and configuration
+python-dotenv>=1.0.0
+
+# Optional: Direct model providers (uncomment as needed)
+# strands-agents[anthropic]  # For direct Anthropic API
+# strands-agents[litellm]    # For OpenAI and other providers via LiteLLM
