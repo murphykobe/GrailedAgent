@@ -1,12 +1,13 @@
-# Grailed Listing Agent - Strands Agents Implementation
+# Grailed Listing Agent - State-Aware Browser Automation
 
-An intelligent agent built with **Strands Agents SDK** for automating Grailed.com listing creation using AI-powered image analysis and browser automation via MCP (Model Context Protocol).
+An intelligent agent built with **Strands Agents SDK** for automating Grailed.com listing creation using AI-powered image analysis and **state-aware browser automation** via MCP (Model Context Protocol).
 
 ## 🤖 Architecture
 
 This implementation uses:
 - **Strands Agents SDK** - For AI agent orchestration and tool integration
 - **MCP Playwright Server** - For browser automation via Model Context Protocol
+- **State-Aware Automation** - Always knows what page it's on before taking actions
 - **Multi-Model Support** - Claude, Bedrock, or LiteLLM for image analysis
 - **Custom Tools** - For Grailed-specific validation and processing
 
@@ -71,35 +72,55 @@ python grailed_agent.py run listings.json
 
 ## 🧠 How It Works
 
-### Agent Architecture
+### State-Aware Agent Architecture
 
-The Grailed Listing Agent is a **Strands Agent** that:
+The Grailed Listing Agent is a **State-Aware Strands Agent** that:
 
-1. **Uses AI Models** for image analysis and reasoning
-2. **Integrates Custom Tools** via `@tool` decorators
-3. **Follows Intelligent Workflows** defined in the system prompt
-4. **Handles Browser Automation** via MCP Playwright
-5. **Provides Error Recovery** with graceful degradation
+1. **Always Checks Page State** before taking any browser actions
+2. **Uses AI Models** for image analysis and reasoning
+3. **Integrates Custom Tools** via `@tool` decorators for state tracking
+4. **Follows Intelligent Workflows** with proper navigation verification
+5. **Handles Browser Automation** via MCP Playwright with state awareness
+6. **Provides Error Recovery** with graceful degradation and state checking
 
-### Workflow Process
+### State-Aware Workflow Process
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Load & Parse  │───▶│  Image Analysis  │───▶│ Browser Actions │
-│  listings.json  │    │   (AI Vision)    │    │  (MCP Playwright)│
+│   Load & Parse  │───▶│  Image Analysis  │───▶│ State Detection │
+│  listings.json  │    │   (AI Vision)    │    │ & Page Checking │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
          │                       │                       │
          ▼                       ▼                       ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Validate Data   │    │ Generate Meta    │    │ Fill Forms &    │
-│ & File Paths    │    │ & Get Approval   │    │ Upload Images   │
+│ Validate Data   │    │ Generate Meta    │    │ Navigate with   │
+│ & File Paths    │    │ & Get Approval   │    │ State Tracking  │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
+                                                         │
+                                                         ▼
+                                               ┌─────────────────┐
+                                               │ Fill Forms &    │
+                                               │ Upload Images   │
+                                               │ (State-Verified)│
+                                               └─────────────────┘
 ```
 
 ### Key Components
 
-#### 1. Strands Agent with Custom Tools
+#### 1. Strands Agent with State-Aware Custom Tools
 ```python
+@tool
+def detect_current_page_state() -> str:
+    """Detect what page/state the browser is currently in"""
+
+@tool
+def navigate_to_sell_page() -> str:
+    """Navigate to sell page with proper state checking"""
+
+@tool
+def verify_sell_page_ready() -> str:
+    """Verify that we're on the sell page and form is ready"""
+
 @tool
 def expand_image_paths(image_paths: List[str]) -> List[str]:
     """Expand and validate image file paths"""
@@ -108,11 +129,11 @@ def expand_image_paths(image_paths: List[str]) -> List[str]:
 def validate_grailed_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
     """Validate Grailed-specific metadata"""
 
-# Agent with comprehensive system prompt
+# Agent with comprehensive system prompt for state awareness
 agent = Agent(
     model=AnthropicModel(...),
-    tools=[file_read, file_write, image_reader, expand_image_paths, validate_grailed_metadata],
-    system_prompt=grailed_system_prompt
+    tools=[file_read, file_write, image_reader, state_tools, validation_tools],
+    system_prompt=state_aware_system_prompt
 )
 ```
 
@@ -126,14 +147,21 @@ playwright_client = MCPClient(lambda: stdio_client(
 ))
 ```
 
-#### 3. Intelligent Workflows
-The agent follows sophisticated workflows defined in the system prompt:
+#### 3. State-Aware Intelligent Workflows
+The agent follows sophisticated workflows with state verification:
 - **Phase 1**: Metadata generation from images
-- **Phase 2**: Browser navigation and login handling  
-- **Phase 3**: Form filling with complex scenarios
-- **Phase 4**: Error handling and recovery
+- **Phase 2**: State-aware browser navigation and login handling  
+- **Phase 3**: Form filling with page verification
+- **Phase 4**: Error handling and recovery with state checking
 
 ## 🛠️ Features
+
+### State-Aware Browser Automation (NEW!)
+- **Page State Detection**: Always knows what page the browser is on
+- **Navigation Verification**: Confirms successful navigation before proceeding
+- **Smart Login Handling**: Only prompts for login when popup actually appears
+- **Form Readiness Checking**: Verifies form elements exist before filling
+- **Error Recovery**: Graceful handling with state-based debugging
 
 ### AI-Powered Image Analysis
 - Analyzes product images to extract metadata

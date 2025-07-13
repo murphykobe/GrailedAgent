@@ -1,40 +1,40 @@
 [
   {
-    "image_paths": [
-      "~/Downloads/IMG_1683.JPG",
-      "~/Downloads/IMG_1684.JPG"
-    ],
-    "price": 380,
-    "size": "S",
-    "condition": "Gently Used",
-    "accept_offers": false,
-    "smart_pricing": false,
-    "country_of_origin": "United States",
-    "designer": "Brain Dead x A.P.C",
-    "department": "Menswear",
-    "category": "Outerwear",
-    "sub_category": "Denim Jackets",
-    "item_name": "Brain Dead x A.P.C Denim Jacket",
     "color": "Indigo",
-    "description": "Brain Dead x A.P.C collaboration denim jacket in indigo wash. Features classic denim construction with contrast stitching and premium hardware. In gently used condition with minimal wear."
+    "sub_category": "Denim Jackets",
+    "country_of_origin": "United States",
+    "image_paths": [
+      "/Users/liumofei/Downloads/IMG_1683.JPG",
+      "/Users/liumofei/Downloads/IMG_1684.JPG"
+    ],
+    "description": "Brain Dead x A.P.C collaboration denim jacket in indigo wash. Features classic denim construction with contrast stitching and premium hardware. In gently used condition with minimal wear.",
+    "item_name": "Brain Dead x A.P.C Denim Jacket",
+    "designer": "Brain Dead x A.P.C",
+    "accept_offers": false,
+    "condition": "Gently Used",
+    "size": "S",
+    "price": 380,
+    "smart_pricing": false,
+    "department": "Menswear",
+    "category": "Outerwear"
   },
   {
-    "image_paths": [
-      "~/Downloads/IMG_1685.JPG",
-      "~/Downloads/IMG_1686.JPG"
-    ],
-    "price": 280,
-    "size": 30,
-    "condition": "Gently Used",
-    "accept_offers": false,
-    "smart_pricing": false,
-    "country_of_origin": "United States",
-    "designer": "Brain Dead x A.P.C",
-    "department": "Menswear",
-    "category": "Bottoms",
-    "sub_category": "Straight Jeans",
-    "item_name": "Brain Dead x A.P.C Straight Jeans",
     "color": "Indigo",
-    "description": "Brain Dead x A.P.C collaboration straight-cut jeans in indigo wash. Features classic 5-pocket styling with contrast stitching and leather patch branding. In gently used condition."
+    "sub_category": "Straight Jeans",
+    "country_of_origin": "United States",
+    "image_paths": [
+      "/Users/liumofei/Downloads/IMG_1685.JPG",
+      "/Users/liumofei/Downloads/IMG_1686.JPG"
+    ],
+    "description": "Brain Dead x A.P.C collaboration straight-cut jeans in indigo wash. Features classic 5-pocket styling with contrast stitching and leather patch branding. In gently used condition.",
+    "item_name": "Brain Dead x A.P.C Straight Jeans",
+    "designer": "Brain Dead x A.P.C",
+    "accept_offers": false,
+    "condition": "Gently Used",
+    "size": 30,
+    "price": 280,
+    "smart_pricing": false,
+    "department": "Menswear",
+    "category": "Bottoms"
   }
 ]
