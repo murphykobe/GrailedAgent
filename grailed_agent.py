@@ -28,12 +28,15 @@ logging.getLogger("strands").setLevel(logging.INFO)
 
 try:
     from strands import Agent, tool
-    from strands_tools import file_read, file_write, image_reader
+    from strands_tools import file_read, file_write
     print("✅ Successfully imported Strands Agents SDK")
 except ImportError as e:
     print(f"❌ Error importing Strands Agents SDK: {e}")
     print("Please install: pip install strands-agents strands-agents-tools")
     sys.exit(1)
+
+# Import additional libraries for custom image handling with Gemini
+import base64
 
 # Import MCP for Playwright browser automation
 try:
@@ -43,6 +46,35 @@ try:
 except ImportError as e:
     print(f"❌ Error importing MCP tools: {e}")
     sys.exit(1)
+
+@tool
+def gemini_image_reader(image_path: str) -> str:
+    """
+    Read and encode JPG image for Gemini API using base64 format.
+    This is specifically designed to work with Gemini's OpenAI-compatible endpoint.
+    """
+    try:
+        # Expand the path
+        expanded_path = Path(image_path).expanduser().resolve()
+        
+        if not expanded_path.exists():
+            return f"Error: Image file not found: {image_path}"
+        
+        # Validate JPG format
+        if not expanded_path.suffix.lower() in ['.jpg', '.jpeg']:
+            raise ValueError(f"Invalid image format: {expanded_path.suffix}. Only JPG/JPEG files are supported.")
+        
+        # Read and encode the image
+        with open(expanded_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Return the data URL format that Gemini expects
+        data_url = f"data:image/jpeg;base64,{base64_image}"
+        
+        return f"Image successfully loaded from {image_path}. Data URL ready for Gemini API."
+        
+    except Exception as e:
+        return f"Error reading image {image_path}: {str(e)}"
 
 @tool
 def expand_image_paths(image_paths: List[str]) -> List[str]:
@@ -72,6 +104,13 @@ def validate_grailed_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
         else:
             print(f"⚠️  Missing required field: {field}")
     
+    # Validate image paths are JPG format
+    if "image_paths" in metadata:
+        for image_path in metadata["image_paths"]:
+            path = Path(image_path)
+            if not path.suffix.lower() in ['.jpg', '.jpeg']:
+                raise ValueError(f"Invalid image format: {path.suffix}. Only JPG/JPEG files are supported for Gemini API.")
+    
     # Add optional fields
     optional_fields = ["accept_offers", "smart_pricing", "country_of_origin"]
     for field in optional_fields:
@@ -83,37 +122,43 @@ def validate_grailed_metadata(metadata: Dict[str, Any]) -> Dict[str, Any]:
 @tool
 def detect_current_page_state() -> str:
     """
-    Detect what page/state the browser is currently in.
+    Detect what page/state the browser is currently in using text-based analysis.
     This is CRITICAL for state-aware automation.
     """
     return """
-CRITICAL: Use browser tools to detect current page state by checking for:
+CRITICAL: Use browser_snapshot to detect current page state by analyzing:
 
 1. **Homepage/Landing Page**:
    - URL contains just "grailed.com" or "grailed.com/"
    - Look for: a[data-testid="desktop-sell"] (sell button)
    - Page title contains "Grailed"
+   - Navigation elements present
 
 2. **Login Modal/Popup State**:
    - Look for: div[role="dialog"], .modal, .login-popup
    - Login form elements: input[type="email"], input[type="password"]
    - "Sign In" or "Log In" buttons/text
+   - Modal overlay blocking main content
 
 3. **Sell/Create Listing Page**:
    - URL contains "/sell" or "/create" or "/listing"
    - Form elements: select[name="department"], input[name="title"]
    - "Create Listing" or "Sell Item" text
+   - Product form fields visible
 
 4. **Profile/Account Page**:
    - URL contains "/users/" or "/profile"
    - User avatar or account settings visible
+   - User-specific content and navigation
 
 5. **Other/Unknown Page**:
    - Check URL and page title
    - Look for navigation elements
+   - Analyze page content structure
 
-Use browser_evaluate, browser_screenshot, and URL checking to determine state.
-Return the detected state clearly.
+Use browser_snapshot to get page accessibility tree and content.
+Parse URL, elements, page title, and text content to determine state.
+Return the detected state clearly: "homepage", "login_popup", "sell_page", "profile", or "unknown".
 """
 
 @tool
@@ -127,7 +172,7 @@ STEP-BY-STEP NAVIGATION TO SELL PAGE:
 
 1. **Check Current State First**:
    - Use detect_current_page_state() to see where we are
-   - Take screenshot for visual confirmation
+   - Use browser_snapshot to analyze page content and URL
 
 2. **If on Homepage**:
    - Look for sell button: a[data-testid="desktop-sell"]
@@ -148,6 +193,11 @@ STEP-BY-STEP NAVIGATION TO SELL PAGE:
    - Navigate to https://www.grailed.com first
    - Then follow homepage flow
 
+6. **State Verification**:
+   - After each navigation step, use browser_snapshot to confirm success
+   - Parse the accessibility tree to verify expected elements are present
+   - Check URL and page content match expected sell page pattern
+
 ALWAYS verify you're on the sell page before trying to fill forms!
 """
 
@@ -160,28 +210,34 @@ def verify_sell_page_ready() -> str:
     return """
 VERIFY SELL PAGE IS READY:
 
-Check for these elements to confirm sell page is loaded and ready:
+Use browser_snapshot to check these elements and confirm sell page is loaded and ready:
 
 1. **URL Check**: 
    - URL should contain "/sell" or similar
-   - Use browser_evaluate to check window.location.href
+   - Parse URL from browser_snapshot accessibility tree
 
 2. **Form Elements Present**:
    - Department dropdown: select[name="department"] or similar
    - Title/Name input: input[name="title"] or input[name="name"]
    - Price input: input[name="price"] or input[type="number"]
    - Description textarea: textarea[name="description"]
+   - Image upload area or file input elements
 
-3. **Page Title**:
-   - Should contain "Sell" or "Create Listing"
+3. **Page Title and Content**:
+   - Should contain "Sell" or "Create Listing" text
+   - Page structure should match sell page layout
 
 4. **No Overlays/Modals**:
    - Ensure no login popups or other modals are blocking the form
    - Check for overlay elements: .modal, .popup, div[role="dialog"]
+   - Verify main form content is accessible
 
-5. **Visual Confirmation**:
-   - Take screenshot to visually confirm sell page layout
+5. **Form Readiness**:
+   - All required form fields should be present and interactable
+   - No loading states or disabled elements blocking interaction
+   - Form should be ready for data input
 
+Use browser_snapshot to analyze page accessibility tree and content.
 Return "READY" if sell page is ready, or describe what's missing/wrong.
 """
 
@@ -300,7 +356,7 @@ def setup_playwright_client():
     return None, []
 
 def setup_model():
-    """Setup the AI model (Bedrock or Anthropic)"""
+    """Setup the AI model (Bedrock, Anthropic, or Gemini)"""
     model_provider = os.getenv("AI_MODEL_PROVIDER", "anthropic")
     
     if model_provider == "anthropic":
@@ -341,8 +397,31 @@ def setup_model():
             print(f"❌ Failed to setup Bedrock model: {e}")
             print("   Please ensure AWS credentials are configured")
             raise
+    elif model_provider == "gemini":
+        try:
+            from strands.models.openai import OpenAIModel
+            api_key = os.getenv("GEMINI_API_KEY")
+            if not api_key:
+                raise ValueError("GEMINI_API_KEY not found in environment")
+            
+            model = OpenAIModel(
+                client_args={
+                    "api_key": api_key,
+                    "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/"
+                },
+                model_id=os.getenv("GEMINI_MODEL_ID", "gemini-2.5-pro"),
+                max_tokens=int(os.getenv("GEMINI_MAX_TOKENS", "4000")),
+                params={"temperature": float(os.getenv("GEMINI_TEMPERATURE", "0.1"))}
+            )
+            model_name = os.getenv("GEMINI_MODEL_ID", "gemini-2.5-pro")
+            print(f"✅ Using Google {model_name} model via OpenAI-compatible endpoint")
+            return model
+        except Exception as e:
+            print(f"❌ Failed to setup Gemini model: {e}")
+            print("   Please set GEMINI_API_KEY in your environment")
+            raise
     else:
-        raise ValueError(f"Unsupported AI_MODEL_PROVIDER: {model_provider}")
+        raise ValueError(f"Unsupported AI_MODEL_PROVIDER: {model_provider}. Supported: anthropic, bedrock, gemini")
 
 def create_agent_with_mcp(playwright_client, playwright_tools, model):
     """Create agent with MCP tools within the context manager"""
@@ -401,7 +480,7 @@ Before ANY action, use detect_current_page_state() to understand where you are i
 6. **WAIT FOR STABILITY**: Use wait_and_retry() for dynamic content
 
 ## STATE DETECTION PRIORITIES:
-1. Check URL with browser_evaluate: window.location.href
+1. Use browser_snapshot to check current page content and URL
 2. Look for page-specific elements (sell button, form fields, login modals)
 3. Check page title and navigation elements
 4. Take screenshot for visual confirmation
@@ -409,10 +488,10 @@ Before ANY action, use detect_current_page_state() to understand where you are i
 
 ## Available Tools:
 - **State Tools**: detect_current_page_state, navigate_to_sell_page, verify_sell_page_ready
-- **Browser Tools**: browser_navigate, browser_screenshot, browser_click, browser_fill, browser_select, browser_evaluate
-- **User Interaction**: prompt_user_login, prompt_user_confirmation
+- **Browser Tools**: browser_navigate, browser_snapshot, browser_click, browser_type, browser_select_option
+- **User Interaction**: prompt_user_login
 - **Utility Tools**: wait_and_retry, expand_image_paths, validate_grailed_metadata
-- **Data Tools**: file_read, file_write, image_reader
+- **Data Tools**: file_read, file_write, gemini_image_reader
 
 ## SUCCESS CRITERIA:
 - Always know what page you're on
@@ -426,10 +505,10 @@ Remember: STATE AWARENESS is the key to reliable browser automation!
 
     # Combine all tools
     all_tools = [
-        file_read, file_write, image_reader,
+        file_read, file_write, gemini_image_reader,
         expand_image_paths, validate_grailed_metadata,
         detect_current_page_state, navigate_to_sell_page, verify_sell_page_ready,
-        prompt_user_login, prompt_user_confirmation, wait_and_retry
+        prompt_user_login, wait_and_retry
     ] + playwright_tools
     
     # Create the agent
@@ -477,6 +556,8 @@ def run_with_mcp_context(command: str, filename: str, dry_run: bool = False):
             instructions = f"""
 Create Grailed listings from {filename} in {'dry-run' if dry_run else 'live'} mode using STATE-AWARE automation.
 
+IMPORTANT: This is a FULLY AUTOMATED workflow. Process ALL listings without requesting user confirmation for each item.
+
 CRITICAL STATE-AWARE WORKFLOW:
 
 1. **Load Data**: Read and validate listings from {filename}
@@ -484,7 +565,7 @@ CRITICAL STATE-AWARE WORKFLOW:
 2. **Initial Navigation with State Tracking**:
    - Navigate to https://www.grailed.com
    - Use detect_current_page_state() to confirm page loaded
-   - Take screenshot for visual confirmation
+   - Use browser_snapshot for state confirmation
 
 3. **State-Aware Sell Page Navigation**:
    - Use detect_current_page_state() to see current page
@@ -498,18 +579,18 @@ CRITICAL STATE-AWARE WORKFLOW:
    - If not ready, troubleshoot and navigate properly
    - Only proceed when sell page is confirmed ready
 
-5. **Process Each Item with State Awareness**:
+5. **Process Each Item with State Awareness (FULLY AUTOMATED)**:
    - For each item in listings:
-     - Use prompt_user_confirmation() to inform user
      - Verify still on sell page before filling forms
-     - Fill all form fields with metadata
-     - Upload images
+     - Fill all form fields with metadata automatically
+     - Upload images using the provided image paths
      - Submit or simulate in dry-run mode
      - Check state after each major action
+     - Continue to next item without user confirmation
 
 6. **Error Recovery**:
    - If any action fails, use detect_current_page_state() to diagnose
-   - Take screenshot for debugging
+   - Use browser_snapshot for debugging page state
    - Use wait_and_retry() for actions that need time
    - Always verify state before retrying
 
